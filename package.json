@@ -1,0 +1,20 @@
+{
+  "name": "barbearia-ra-torre2",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Site de agendamento e painel administrativo da Barbearia RA Torre 2.",
+  "scripts": {
+    "start": "node scripts/server.mjs",
+    "setup:admin": "node scripts/setup-admin.mjs",
+    "seed": "node scripts/seed-existing-data.mjs",
+    "migrate:availability": "node scripts/migrate-availability.mjs",
+    "check": "node scripts/check-project.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

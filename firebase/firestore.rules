@@ -1,0 +1,147 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isPrimaryAdmin() {
+      return isSignedIn()
+        && request.auth.token.email == 'eduardolacerda0908@gmail.com';
+    }
+
+    function isAdmin() {
+      return isPrimaryAdmin()
+        || (isSignedIn()
+          && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.tipo == 'admin'
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'ativo');
+    }
+
+    function isYmd(value) {
+      return value is string && value.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isHHmm(value) {
+      return value is string && value.matches('^([01]\\d|2[0-3]):[0-5]\\d$');
+    }
+
+    function isReservationCollection(name) {
+      return name is string && name.matches('^reservas_[a-z0-9_]+$');
+    }
+
+    function validPublicBooking(collectionName, documentId) {
+      let data = request.resource.data;
+      return data.keys().hasAll([
+          'data', 'hora', 'profissional', 'clienteNome', 'clienteSobrenome',
+          'clienteNomeCompleto', 'clienteTelefone', 'servicoNome',
+          'servicoTempoMin', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'data', 'hora', 'profissional', 'profissionalNome', 'clienteNome',
+          'clienteSobrenome', 'clienteNomeCompleto', 'clienteNomeLower',
+          'clienteSobrenomeLower', 'clienteTelefone', 'servicoNome',
+          'servicoValor', 'servicoTempoMin', 'produtos', 'totalProdutos',
+          'raclub', 'raclubMembro', 'clienteTipo', 'tags', 'status',
+          'createdAt', 'updatedAt'
+        ])
+        && isYmd(data.data)
+        && isHHmm(data.hora)
+        && documentId == data.data + '_' + data.hora
+        && data.clienteNome is string
+        && data.clienteNome.size() >= 2
+        && data.clienteNome.size() <= 80
+        && data.clienteSobrenome is string
+        && data.clienteSobrenome.size() >= 1
+        && data.clienteSobrenome.size() <= 100
+        && data.clienteTelefone is string
+        && data.clienteTelefone.matches('^55[0-9]{10,11}$')
+        && data.servicoNome is string
+        && data.servicoNome.size() >= 2
+        && data.servicoTempoMin is number
+        && data.servicoTempoMin >= 5
+        && data.servicoTempoMin <= 480
+        && data.status == 'confirmado'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && existsAfter(/databases/$(database)/documents/availability/$(collectionName + '__' + data.data + '_' + data.hora));
+    }
+
+    match /admins/{uid} {
+      allow read: if isPrimaryAdmin() || (isSignedIn() && request.auth.uid == uid && isAdmin());
+      allow create, update, delete: if isPrimaryAdmin();
+    }
+
+    match /config/{documentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /config/excecoes/dias/{documentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /excecoes/{documentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /servicos/{documentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /profissionais/{documentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+      match /excecoes/{exceptionId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    match /availability/{slotId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll([
+          'colecao', 'data', 'hora', 'inicioReserva', 'duracaoMin',
+          'reservaId', 'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'colecao', 'data', 'hora', 'inicioReserva', 'duracaoMin',
+          'reservaId', 'createdAt', 'updatedAt'
+        ])
+        && isReservationCollection(request.resource.data.colecao)
+        && isYmd(request.resource.data.data)
+        && isHHmm(request.resource.data.hora)
+        && isHHmm(request.resource.data.inicioReserva)
+        && request.resource.data.duracaoMin is number
+        && request.resource.data.duracaoMin >= 5
+        && request.resource.data.duracaoMin <= 480
+        && request.resource.data.reservaId is string
+        && request.resource.data.createdAt is timestamp
+        && !exists(/databases/$(database)/documents/availability/$(slotId))
+        && existsAfter(/databases/$(database)/documents/$(request.resource.data.colecao)/$(request.resource.data.reservaId));
+      allow update, delete: if isAdmin();
+    }
+
+    match /{collectionName}/{documentId} {
+      allow create: if isReservationCollection(collectionName)
+        && (isAdmin() || validPublicBooking(collectionName, documentId));
+      allow read, update, delete: if isReservationCollection(collectionName) && isAdmin();
+    }
+
+    match /raclub_clients/{documentId} { allow read, write: if isAdmin(); }
+    match /raclub_payments/{documentId} { allow read, write: if isAdmin(); }
+    match /produtos/{documentId} { allow read, write: if isAdmin(); }
+    match /pdv_sales/{documentId} { allow read, write: if isAdmin(); }
+    match /despesas/{documentId} { allow read, write: if isAdmin(); }
+    match /rabarbearia_expenses/{documentId} { allow read, write: if isAdmin(); }
+    match /vendas/{documentId} { allow read, write: if isAdmin(); }
+    match /contas_apagar/{documentId} { allow read, write: if isAdmin(); }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

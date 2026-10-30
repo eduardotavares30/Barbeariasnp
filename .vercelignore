@@ -1,0 +1,22 @@
+# Dependências e arquivos locais
+node_modules/
+.vercel/
+.env
+.env.*
+*.log
+
+# Cópias de segurança e versões antigas
+_backup-original-2026-10-29/
+site-agendamento-vt-main/
+adm-agendamento-vt-main/
+
+# Ferramentas administrativas locais e configuração do Firebase CLI
+scripts/
+firebase/
+firebase.json
+.firebaserc
+README.md
+
+# Credenciais nunca devem ser publicadas
+service-account*.json
+firebase-adminsdk*.json

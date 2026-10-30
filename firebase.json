@@ -1,0 +1,23 @@
+{
+  "firestore": {
+    "rules": "firebase/firestore.rules"
+  },
+  "storage": {
+    "rules": "firebase/storage.rules"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "_backup-original-2026-10-29/**",
+      "site-agendamento-vt-main/**",
+      "adm-agendamento-vt-main/**",
+      "scripts/**",
+      "README.md",
+      "package*.json"
+    ],
+    "cleanUrls": true
+  }
+}
